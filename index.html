@@ -113,7 +113,7 @@
 
 <script>
 // ===================== הגדרות =====================
-const VERSION = '2026-11-10-02';
+const VERSION = '2026-11-10-03';
 const SUPABASE_URL = 'https://wvfttzfitqclrxsbbbsl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Cju_iMjpxbRI-JbEKBa5iw_AInI5ehe';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -545,9 +545,9 @@ async function loadWorkers(){
     const el = $('wkList'); if(!el) return;
     el.classList.remove('empty'); el.style.padding='0';
     el.innerHTML = `<div class="tblwrap"><table><tr><th>שם</th><th>תפקיד</th><th>טלפון</th><th>קוד</th><th></th></tr>` +
-      WORKERS.map(w=>`<tr style="${w.active?'':'opacity:.45'}"><td><b>${esc(w.name)}</b>${w.is_manager?' 🔑':''}${w.active?'':' (לא פעיל)'}</td>
+      WORKERS.map(w=>`<tr style="${w.active?'':'opacity:.45'}"><td><b>${esc(w.name)}</b>${w.is_owner?' 👑 מנהל ראשי':w.is_manager?' 🔑':''}${w.active?'':' (לא פעיל)'}</td>
         <td>${esc(w.role||'')}</td><td>${esc(w.phone||'')}</td><td style="font-family:monospace">${esc(w.code)}</td>
-        <td><button class="btn ghost sm" onclick="openEditWorker(${w.id})">עריכה</button></td></tr>`).join('') + `</table></div>`;
+        <td>${w.is_owner && !S.me.is_owner ? '' : `<button class="btn ghost sm" onclick="openEditWorker(${w.id})">עריכה</button>`}</td></tr>`).join('') + `</table></div>`;
   }catch(e){ const el=$('wkList'); if(el) el.textContent=e.message; }
 }
 function openEditWorker(id){
