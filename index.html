@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>מכשירי LiveU — כאן 11</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#f3f4f6; --card:#fff; --ink:#111827; --mute:#6b7280; --line:#e5e7eb;
+    --head:#0f172a; --accent:#2563eb;
+    --ok:#16a34a; --ok-bg:#dcfce7; --out:#d97706; --out-bg:#fef3c7;
+    --bad:#dc2626; --bad-bg:#fee2e2; --gray-bg:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+  button{font:inherit;cursor:pointer}
+  input,select,textarea{font:inherit;width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;background:#fff}
+  textarea{min-height:64px;resize:vertical}
+  label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+  .hidden{display:none!important}
+
+  header{position:sticky;top:0;z-index:5;background:var(--head);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+  header h1{font-size:18px;margin:0}
+  header .who{font-size:13px;opacity:.85}
+  header button{background:transparent;border:1px solid #475569;color:#fff;border-radius:6px;padding:4px 10px;font-size:13px;margin-inline-start:8px}
+
+  main{padding:14px 14px 90px;max-width:900px;margin:0 auto}
+  nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;z-index:5}
+  nav button{flex:1;border:0;background:none;padding:10px 4px 12px;font-size:13px;color:var(--mute);position:relative}
+  nav button .ic{display:block;font-size:20px;margin-bottom:2px}
+  nav button.on{color:var(--accent);font-weight:600}
+  nav .dot{position:absolute;top:6px;left:50%;margin-left:6px;background:var(--bad);color:#fff;border-radius:10px;font-size:11px;padding:0 5px;min-width:16px}
+
+  .card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+  .title{font-weight:700;font-size:16px}
+  .sub{color:var(--mute);font-size:13px;margin-top:3px}
+  .badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+  .b-available{background:var(--ok-bg);color:var(--ok)}
+  .b-out{background:var(--out-bg);color:var(--out)}
+  .b-faulty{background:var(--bad-bg);color:var(--bad)}
+  .b-maintenance,.b-retired{background:var(--gray-bg);color:#374151}
+  .late{color:var(--bad);font-weight:700}
+  .btn{border:0;border-radius:8px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:600}
+  .btn.big{width:100%;padding:14px;font-size:16px;margin-bottom:12px}
+  .btn.ghost{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+  .btn.red{background:var(--bad)}
+  .btn.green{background:var(--ok)}
+  .btn.sm{padding:6px 10px;font-size:13px}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  h2{font-size:16px;margin:18px 0 8px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+  .stat{background:#fff;border-radius:10px;padding:10px;text-align:center}
+  .stat b{display:block;font-size:22px}
+  .stat span{font-size:12px;color:var(--mute)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .chip{border:1px solid #d1d5db;background:#fff;border-radius:999px;padding:5px 12px;font-size:13px}
+  .chip.on{background:var(--head);color:#fff;border-color:var(--head)}
+  .empty{color:var(--mute);text-align:center;padding:24px}
+  .acc{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px}
+  .acc label{display:flex;gap:6px;align-items:center;margin:0;color:var(--ink);font-size:14px;background:#f9fafb;border:1px solid var(--line);border-radius:8px;padding:8px}
+  .acc input[type=checkbox]{width:auto}
+  .acc input[type=number]{width:56px;padding:4px}
+  .seg{display:flex;gap:6px}
+  .seg button{flex:1;padding:10px;border:1px solid #d1d5db;background:#fff;border-radius:8px}
+  .seg button.on{background:var(--head);color:#fff;border-color:var(--head)}
+  .seg button.on.bad{background:var(--bad);border-color:var(--bad)}
+  .warn{background:var(--out-bg);color:#92400e;border-radius:8px;padding:8px 10px;font-size:13px;margin-top:8px}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}
+  th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+  th{background:#f9fafb;position:sticky;top:0}
+  .tblwrap{overflow:auto;max-height:60vh;border-radius:10px}
+  .hist{border-right:3px solid var(--line);padding:6px 10px;margin:8px 0}
+  .hist.issue{border-color:var(--bad)}
+  .hist.open{border-color:var(--out)}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+  .modal{background:#fff;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:18px}
+  @media(min-width:700px){.modal-bg{align-items:center}.modal{border-radius:16px}}
+  .modal h3{margin:0 0 6px;font-size:18px}
+  .x{float:left;background:none;border:0;font-size:22px;color:var(--mute)}
+
+  #login{max-width:360px;margin:12vh auto;padding:0 16px;text-align:center}
+  #login h1{font-size:22px}
+  #login input{text-align:center;font-size:22px;letter-spacing:4px;margin:14px 0}
+  .err{color:var(--bad);font-size:14px;min-height:20px}
+  #toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:8px;z-index:30;font-size:14px;max-width:90%}
+  footer{text-align:center;color:#9ca3af;font-size:11px;margin-top:20px}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h1>📡 מכשירי LiveU</h1>
+  <div class="sub">כאן 11 — לקיחה והחזרה של מכשירים</div>
+  <input id="codeIn" type="password" inputmode="numeric" autocomplete="off" placeholder="קוד אישי">
+  <button class="btn big" onclick="doLogin()">כניסה</button>
+  <div class="err" id="loginErr"></div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div><h1>📡 מכשירי LiveU</h1><div class="who" id="who"></div></div>
+    <div><button onclick="load()">רענון</button><button onclick="logout()">יציאה</button></div>
+  </header>
+  <main id="main"></main>
+  <nav id="nav"></nav>
+</div>
+<div id="modalRoot"></div>
+<div id="toast" class="hidden"></div>
+
+<script>
+// ===================== הגדרות =====================
+const VERSION = '2026-11-09-01';
+const SUPABASE_URL = 'https://wvfttzfitqclrxsbbbsl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Cju_iMjpxbRI-JbEKBa5iw_AInI5ehe';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const STATUS = {available:'זמין', out:'בחוץ', faulty:'תקול', maintenance:'בתיקון', retired:'הוצא משימוש'};
+const ACC = [
+  {k:'batteries', label:'סוללות', num:true},
+  {k:'charger',   label:'מטען'},
+  {k:'bag',       label:'תיק'},
+  {k:'cables',    label:'כבלים'},
+  {k:'headset',   label:'אוזניות/IFB'},
+];
+
+// ===================== מצב =====================
+let CODE = localStorage.getItem('lu_code') || '';
+let S = {me:null, sites:[], devices:[], faults:[]};
+let TAB = 'mine';
+let FILTER = {site:'all', status:'all'};
+
+// ===================== עזרים =====================
+const $ = id => document.getElementById(id);
+function esc(s){return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// כל התאריכים בשעון ישראל
+function todayIL(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jerusalem'}).format(new Date());}
+function addDays(ymd, n){const d=new Date(ymd+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10);}
+function fmtDT(ts){ if(!ts) return ''; return new Intl.DateTimeFormat('he-IL',{timeZone:'Asia/Jerusalem',day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(ts)); }
+function fmtD(ymd){ if(!ymd) return ''; const [y,m,d]=ymd.split('-'); return `${d}/${m}/${y.slice(2)}`; }
+function siteName(id){ const s=S.sites.find(x=>x.id===id); return s?s.name:'—'; }
+function isLate(open){ return open && open.expected_return && open.expected_return < todayIL(); }
+function badge(st){ return `<span class="badge b-${st}">${STATUS[st]||st}</span>`; }
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.remove('hidden'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.add('hidden'),2800); }
+
+async function rpc(fn, args={}){
+  const {data, error} = await sb.rpc(fn, {p_code: CODE, ...args});
+  if(error) throw new Error(error.message || 'שגיאה');
+  return data;
+}
+async function run(btn, fn){
+  if(btn){ btn.disabled = true; btn._t = btn.textContent; btn.textContent = '...'; }
+  try { await fn(); }
+  catch(e){ alert(e.message); }
+  finally { if(btn && document.body.contains(btn)){ btn.disabled=false; btn.textContent=btn._t; } }
+}
+
+// אביזרים
+function accForm(prefix, vals={}){
+  return `<div class="acc">` + ACC.map(a => a.num
+    ? `<label>${a.label} <input type="number" min="0" max="20" id="${prefix}_${a.k}" value="${Number(vals[a.k]||0)}"></label>`
+    : `<label><input type="checkbox" id="${prefix}_${a.k}" ${vals[a.k]?'checked':''}> ${a.label}</label>`
+  ).join('') + `</div>`;
+}
+function readAcc(prefix){
+  const o={};
+  ACC.forEach(a=>{ const el=$(prefix+'_'+a.k); if(!el) return;
+    if(a.num){ const n=parseInt(el.value)||0; if(n>0) o[a.k]=n; } else if(el.checked) o[a.k]=true; });
+  return o;
+}
+function accText(o){
+  if(!o) return '';
+  return ACC.filter(a=>o[a.k]).map(a=>a.num?`${o[a.k]} ${a.label}`:a.label).join(', ');
+}
+function accMissing(out, ret){
+  out = out||{}; ret = ret||{};
+  return ACC.filter(a => a.num ? (Number(out[a.k]||0) > Number(ret[a.k]||0)) : (out[a.k] && !ret[a.k]))
+            .map(a => a.num ? `${Number(out[a.k])-Number(ret[a.k]||0)} ${a.label}` : a.label);
+}
+
+// ===================== כניסה =====================
+async function doLogin(){
+  const c = $('codeIn').value.trim();
+  if(!c) return;
+  CODE = c;
+  try{
+    await rpc('lu_login');
+    localStorage.setItem('lu_code', c);
+    $('loginErr').textContent='';
+    await load();
+  }catch(e){ CODE=''; $('loginErr').textContent = e.message; }
+}
+$('codeIn').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+function logout(){ localStorage.removeItem('lu_code'); CODE=''; S={me:null,sites:[],devices:[],faults:[]};
+  $('app').classList.add('hidden'); $('login').classList.remove('hidden'); $('codeIn').value=''; }
+
+async function load(){
+  try{
+    S = await rpc('lu_state');
+    $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+    $('who').textContent = S.me.name + (S.me.is_manager ? ' · מנהל' : '');
+    render();
+  }catch(e){
+    if(/קוד שגוי/.test(e.message)) logout();
+    else alert('שגיאה בטעינה: ' + e.message);
+  }
+}
+
+// ===================== תצוגה =====================
+function render(){
+  const tabs = [
+    {k:'mine', ic:'🎒', t:'שלי'},
+    {k:'devices', ic:'📡', t:'מכשירים'},
+    {k:'faults', ic:'⚠️', t:'תקלות', dot:S.faults.length},
+  ];
+  if(S.me.is_manager) tabs.push({k:'admin', ic:'⚙️', t:'ניהול', dot:S.devices.filter(d=>isLate(d.open)).length});
+  if(!tabs.find(t=>t.k===TAB)) TAB='mine';
+  $('nav').innerHTML = tabs.map(t=>`<button class="${TAB===t.k?'on':''}" onclick="TAB='${t.k}';render()">
+    <span class="ic">${t.ic}</span>${t.t}${t.dot?`<span class="dot">${t.dot}</span>`:''}</button>`).join('');
+  const m = $('main');
+  if(TAB==='mine') m.innerHTML = viewMine();
+  if(TAB==='devices') m.innerHTML = viewDevices();
+  if(TAB==='faults') m.innerHTML = viewFaults();
+  if(TAB==='admin') { m.innerHTML = viewAdmin(); }
+  m.innerHTML += `<footer>גרסה ${VERSION}</footer>`;
+  if(TAB==='mine') loadMyHistory();
+}
+
+function outLine(o){
+  return `${esc(o.assignment)} · נלקח ${fmtDT(o.out_at)} מ${esc(siteName(o.out_site_id))}`
+       + (o.expected_return ? ` · <span class="${isLate(o)?'late':''}">החזרה ${fmtD(o.expected_return)}${isLate(o)?' (באיחור)':''}</span>` : '');
+}
+
+// ---------- שלי ----------
+function viewMine(){
+  const mine = S.devices.filter(d => d.open && d.open.worker_id === S.me.id);
+  let h = `<button class="btn big" onclick="openTake()">＋ לקחתי מכשיר</button>`;
+  h += `<h2>המכשירים שאצלי (${mine.length})</h2>`;
+  if(!mine.length) h += `<div class="card empty">אין אצלך מכשירים כרגע</div>`;
+  mine.forEach(d => {
+    h += `<div class="card"><div class="row"><div>
+      <div class="title">${esc(d.label)} <span class="sub">${esc(d.model||'')}</span></div>
+      <div class="sub">${outLine(d.open)}</div>
+      ${accText(d.open.out_accessories)?`<div class="sub">אביזרים: ${esc(accText(d.open.out_accessories))}</div>`:''}
+      </div></div>
+      <div class="btns"><button class="btn green" onclick="openReturn(${d.id})">החזרתי</button>
+      <button class="btn ghost sm" onclick="openFault(${d.id})">דיווח תקלה</button></div></div>`;
+  });
+  h += `<h2>ההיסטוריה שלי</h2><div id="myHist" class="card empty">טוען...</div>`;
+  return h;
+}
+async function loadMyHistory(){
+  try{
+    const rows = await rpc('lu_my_history');
+    const el = $('myHist'); if(!el) return;
+    const done = rows.filter(r=>r.returned_at);
+    if(!done.length){ el.textContent='עדיין אין החזרות'; return; }
+    el.classList.remove('empty');
+    el.innerHTML = done.slice(0,20).map(r=>`<div class="hist ${r.return_condition==='issue'?'issue':''}">
+      <b>${esc(r.device_label)}</b> · ${esc(r.assignment||'')}<div class="sub">
+      ${fmtDT(r.out_at)} (${esc(r.out_site||'')}) ← ${fmtDT(r.returned_at)} (${esc(r.return_site||'')})
+      ${r.return_condition==='issue'?' · <span class="late">דווחה תקלה</span>':''}</div></div>`).join('');
+  }catch(e){ const el=$('myHist'); if(el) el.textContent='שגיאה בטעינת היסטוריה'; }
+}
+
+// ---------- מכשירים ----------
+function viewDevices(){
+  const active = S.devices.filter(d=>d.status!=='retired');
+  let h = `<div class="stats">`;
+  S.sites.forEach(s => { h += `<div class="stat"><b style="color:var(--ok)">${active.filter(d=>d.status==='available'&&d.current_site_id===s.id).length}</b><span>זמינים ב${esc(s.name)}</span></div>`; });
+  h += `<div class="stat"><b style="color:var(--out)">${active.filter(d=>d.status==='out').length}</b><span>בחוץ</span></div>`;
+  h += `<div class="stat"><b style="color:var(--bad)">${active.filter(d=>d.status==='faulty'||d.status==='maintenance').length}</b><span>תקולים / בתיקון</span></div></div>`;
+
+  h += `<div class="chips">` + [{k:'all',n:'כל האתרים'}, ...S.sites.map(s=>({k:String(s.id),n:s.name}))]
+     .map(c=>`<button class="chip ${FILTER.site===c.k?'on':''}" onclick="FILTER.site='${c.k}';render()">${esc(c.n)}</button>`).join('') + `</div>`;
+  const stList = ['all','available','out','faulty','maintenance'].concat(S.me.is_manager?['retired']:[]);
+  h += `<div class="chips">` + stList.map(k=>`<button class="chip ${FILTER.status===k?'on':''}" onclick="FILTER.status='${k}';render()">${k==='all'?'הכול':STATUS[k]}</button>`).join('') + `</div>`;
+
+  let list = S.devices.filter(d => FILTER.status==='all' ? d.status!=='retired' : d.status===FILTER.status);
+  if(FILTER.site!=='all'){ const sid=Number(FILTER.site);
+    list = list.filter(d => d.open ? d.open.out_site_id===sid : d.current_site_id===sid); }
+  if(!list.length) return h + `<div class="card empty">אין מכשירים להצגה</div>`;
+  list.forEach(d => { h += deviceCard(d); });
+  return h;
+}
+function deviceCard(d){
+  let where;
+  if(d.open) where = `אצל <b>${esc(d.open.worker_name)}</b> · ${outLine(d.open)}`;
+  else where = `נמצא ב${esc(siteName(d.current_site_id))}`;
+  return `<div class="card" onclick="openDevice(${d.id})" style="cursor:pointer"><div class="row">
+    <div><div class="title">${esc(d.label)} <span class="sub">${esc(d.model||'')}</span></div>
+    <div class="sub">${where}</div>
+    ${d.open_faults?`<div class="sub late">⚠️ ${d.open_faults} תקלות פתוחות</div>`:''}</div>
+    ${badge(d.status)}</div></div>`;
+}
+
+// ---------- תקלות ----------
+function viewFaults(){
+  let h = `<button class="btn big red" onclick="openFault()">⚠️ דיווח על תקלה</button>`;
+  h += `<h2>תקלות פתוחות (${S.faults.length})</h2>`;
+  if(!S.faults.length) h += `<div class="card empty">אין תקלות פתוחות 👍</div>`;
+  S.faults.forEach(f => {
+    h += `<div class="card"><div class="title">${esc(f.device_label)}</div>
+      <div style="margin:6px 0">${esc(f.description)}</div>
+      <div class="sub">דווח ע״י ${esc(f.worker_name||'—')} · ${fmtDT(f.created_at)}</div>
+      ${S.me.is_manager?`<div class="btns"><button class="btn green sm" onclick="resolveFault(${f.id}, this)">סגירת תקלה</button></div>`:''}</div>`;
+  });
+  return h;
+}
+async function resolveFault(id, btn){
+  const note = prompt('מה תוקן? (לא חובה)');
+  if(note === null) return;
+  await run(btn, async()=>{ await rpc('lu_admin_resolve_fault',{p_fault_id:id, p_note:note}); toast('התקלה נסגרה'); await load(); });
+}
+
+// ===================== מודאלים =====================
+function openModal(html){ $('modalRoot').innerHTML = `<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal"><button class="x" onclick="closeModal()">✕</button>${html}</div></div>`; }
+function closeModal(){ $('modalRoot').innerHTML=''; }
+
+// ---------- לקיחה ----------
+function openTake(preDeviceId){
+  const avail = S.devices.filter(d=>d.status==='available');
+  if(!avail.length){ alert('אין כרגע מכשירים זמינים'); return; }
+  const pre = preDeviceId ? S.devices.find(d=>d.id===preDeviceId) : null;
+  let siteId = pre ? pre.current_site_id : Number(localStorage.getItem('lu_site')) || S.sites[0]?.id;
+  if(!avail.some(d=>d.current_site_id===siteId)) siteId = avail[0].current_site_id;
+  const t = todayIL();
+  openModal(`<h3>לקיחת מכשיר</h3>
+    <label>מאיפה לוקחים?</label>
+    <div class="seg" id="tkSites">${S.sites.map(s=>`<button data-id="${s.id}" class="${s.id===siteId?'on':''}" onclick="takeSite(${s.id})">${esc(s.name)} (${avail.filter(d=>d.current_site_id===s.id).length})</button>`).join('')}</div>
+    <label>מכשיר</label><select id="tkDev"></select>
+    <label>צילום / משימה *</label><input id="tkAsg" placeholder="למשל: כתבה בשדרות לחדשות הערב">
+    <div class="row" style="gap:8px"><div style="flex:1"><label>תאריך צילום</label><input type="date" id="tkShoot" value="${t}"></div>
+    <div style="flex:1"><label>החזרה צפויה</label><input type="date" id="tkRet" value="${t}"></div></div>
+    <label>אביזרים שלקחתי</label>${accForm('tka',{batteries:2,charger:true})}
+    <label>הערות</label><textarea id="tkNotes"></textarea>
+    <div class="btns"><button class="btn big" onclick="submitTake(this)">אישור לקיחה</button></div>`);
+  takeSite(siteId, pre?.id);
+}
+function takeSite(id, preId){
+  document.querySelectorAll('#tkSites button').forEach(b=>b.classList.toggle('on', Number(b.dataset.id)===id));
+  const list = S.devices.filter(d=>d.status==='available' && d.current_site_id===id);
+  $('tkDev').innerHTML = list.length ? list.map(d=>`<option value="${d.id}" ${d.id===preId?'selected':''}>${esc(d.label)}${d.model?' — '+esc(d.model):''}</option>`).join('')
+                                     : `<option value="">אין מכשירים זמינים כאן</option>`;
+  $('tkDev').dataset.site = id;
+}
+async function submitTake(btn){
+  const dev = Number($('tkDev').value);
+  if(!dev){ alert('יש לבחור מכשיר'); return; }
+  if(!$('tkAsg').value.trim()){ alert('יש לציין צילום/משימה'); $('tkAsg').focus(); return; }
+  await run(btn, async()=>{
+    await rpc('lu_checkout',{p_device_id:dev, p_assignment:$('tkAsg').value, p_shoot_date:$('tkShoot').value||null,
+      p_expected_return:$('tkRet').value||null, p_accessories:readAcc('tka'), p_notes:$('tkNotes').value});
+    localStorage.setItem('lu_site', $('tkDev').dataset.site);
+    closeModal(); toast('נרשם — בהצלחה בצילום!'); TAB='mine'; await load();
+  });
+}
+
+// ---------- החזרה ----------
+let RET_COND = 'ok';
+function openReturn(deviceId){
+  const d = S.devices.find(x=>x.id===deviceId); if(!d||!d.open) return;
+  RET_COND = 'ok';
+  const forOther = d.open.worker_id !== S.me.id;
+  openModal(`<h3>החזרת ${esc(d.label)}</h3>
+    ${forOther?`<div class="warn">החזרה בשם ${esc(d.open.worker_name)} (מנהל)</div>`:''}
+    <div class="sub">${outLine(d.open)}</div>
+    <label>לאן החזרת?</label>
+    <select id="rtSite">${S.sites.map(s=>`<option value="${s.id}" ${s.id===d.open.out_site_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
+    <label>מצב המכשיר</label>
+    <div class="seg"><button id="cOk" class="on" onclick="setCond('ok')">✔ תקין</button><button id="cIss" onclick="setCond('issue')">⚠️ יש תקלה</button></div>
+    <div id="faultBox" class="hidden"><label>תיאור התקלה *</label><textarea id="rtFault" placeholder="מה לא עבד?"></textarea></div>
+    <label>אביזרים שהוחזרו</label>${accForm('rta', d.open.out_accessories||{})}
+    <div id="rtMiss"></div>
+    <label>הערות</label><textarea id="rtNotes"></textarea>
+    <div class="btns"><button class="btn big green" onclick="submitReturn(${d.id}, this)">אישור החזרה</button></div>`);
+  document.querySelectorAll('[id^=rta_]').forEach(el=>el.addEventListener('change',()=>showMissing(d)));
+}
+function setCond(c){ RET_COND=c; $('cOk').classList.toggle('on',c==='ok'); $('cIss').classList.toggle('on',c==='issue'); $('cIss').classList.toggle('bad',c==='issue'); $('faultBox').classList.toggle('hidden',c!=='issue'); }
+function showMissing(d){ const m=accMissing(d.open.out_accessories, readAcc('rta')); $('rtMiss').innerHTML = m.length?`<div class="warn">חסר לעומת מה שנלקח: ${esc(m.join(', '))}</div>`:''; }
+async function submitReturn(deviceId, btn){
+  const d = S.devices.find(x=>x.id===deviceId);
+  const acc = readAcc('rta');
+  if(RET_COND==='issue' && !$('rtFault').value.trim()){ alert('יש לתאר את התקלה'); $('rtFault').focus(); return; }
+  const miss = accMissing(d.open.out_accessories, acc);
+  let notes = $('rtNotes').value.trim();
+  if(miss.length){
+    if(!confirm('חסרים אביזרים: ' + miss.join(', ') + '\nלהמשיך בכל זאת?')) return;
+    notes = (notes ? notes + ' | ' : '') + 'חסר: ' + miss.join(', ');
+  }
+  await run(btn, async()=>{
+    await rpc('lu_return',{p_checkout_id:d.open.id, p_site_id:Number($('rtSite').value), p_condition:RET_COND,
+      p_accessories:acc, p_notes:notes, p_fault: RET_COND==='issue' ? $('rtFault').value : null});
+    closeModal(); toast('ההחזרה נרשמה, תודה!'); await load();
+  });
+}
+
+// ---------- דיווח תקלה ----------
+function openFault(preId){
+  const list = S.devices.filter(d=>d.status!=='retired');
+  openModal(`<h3>דיווח תקלה</h3>
+    <label>מכשיר</label><select id="ftDev">${list.map(d=>`<option value="${d.id}" ${d.id===preId?'selected':''}>${esc(d.label)}${d.model?' — '+esc(d.model):''}</option>`).join('')}</select>
+    <label>מה הבעיה? *</label><textarea id="ftDesc" placeholder="למשל: מודם 3 לא מתחבר, סוללה לא נטענת..."></textarea>
+    <div class="btns"><button class="btn big red" onclick="submitFault(this)">שליחה</button></div>`);
+}
+async function submitFault(btn){
+  if(!$('ftDesc').value.trim()){ alert('יש לתאר את התקלה'); return; }
+  await run(btn, async()=>{
+    await rpc('lu_report_fault',{p_device_id:Number($('ftDev').value), p_description:$('ftDesc').value});
+    closeModal(); toast('התקלה דווחה'); await load();
+  });
+}
+
+// ---------- כרטיס מכשיר ----------
+async function openDevice(id){
+  const d = S.devices.find(x=>x.id===id); if(!d) return;
+  const mgr = S.me.is_manager;
+  let h = `<h3>${esc(d.label)} ${badge(d.status)}</h3>
+    <div class="sub">${esc(d.model||'')}${d.serial?' · מס״ד '+esc(d.serial):''}${d.sim_info?' · SIM: '+esc(d.sim_info):''}</div>
+    <div class="sub">מחסן בית: ${esc(siteName(d.home_site_id))}</div>
+    ${d.notes?`<div class="sub">${esc(d.notes)}</div>`:''}
+    <div class="card" style="background:#f9fafb;margin-top:10px">${d.open
+      ? `אצל <b>${esc(d.open.worker_name)}</b>${d.open.worker_phone?` · <a href="tel:${esc(d.open.worker_phone)}">${esc(d.open.worker_phone)}</a>`:''}<div class="sub">${outLine(d.open)}</div>`
+      : `נמצא ב<b>${esc(siteName(d.current_site_id))}</b>`}</div>
+    <div class="btns">`;
+  if(d.status==='available') h += `<button class="btn" onclick="closeModal();openTake(${d.id})">לקחתי את המכשיר</button>`;
+  if(d.open && (d.open.worker_id===S.me.id || mgr)) h += `<button class="btn green" onclick="closeModal();openReturn(${d.id})">${d.open.worker_id===S.me.id?'החזרתי':'סימון החזרה'}</button>`;
+  h += `<button class="btn ghost" onclick="closeModal();openFault(${d.id})">דיווח תקלה</button>`;
+  if(mgr){
+    h += `<button class="btn ghost" onclick="closeModal();openEditDevice(${d.id})">עריכה</button>`;
+    if(d.status!=='out') h += `<button class="btn ghost" onclick="openSetStatus(${d.id})">שינוי סטטוס/מיקום</button>`;
+  }
+  h += `</div>`;
+  if(mgr) h += `<h2>היסטוריה</h2><div id="devHist" class="empty">טוען...</div>`;
+  openModal(h);
+  if(mgr){
+    try{
+      const r = await rpc('lu_device_history',{p_device_id:id});
+      const el = $('devHist'); if(!el) return;
+      const items = [
+        ...r.checkouts.map(c=>({t:c.out_at, html:histCheckout(c)})),
+        ...r.faults.map(f=>({t:f.created_at, html:histFault(f)})),
+      ].sort((a,b)=> a.t<b.t?1:-1);
+      el.classList.remove('empty');
+      el.innerHTML = items.length ? items.map(i=>i.html).join('') : '<div class="empty">אין היסטוריה עדיין</div>';
+    }catch(e){ const el=$('devHist'); if(el) el.textContent = e.message; }
+  }
+}
+function histCheckout(c){
+  const miss = c.returned_at ? accMissing(c.out_accessories, c.return_accessories) : [];
+  return `<div class="hist ${!c.returned_at?'open':c.return_condition==='issue'?'issue':''}">
+    <b>${esc(c.worker_name)}</b> · ${esc(c.assignment||'')}${c.shoot_date?` (${fmtD(c.shoot_date)})`:''}
+    <div class="sub">📤 ${fmtDT(c.out_at)} מ${esc(c.out_site||'')}${accText(c.out_accessories)?' · '+esc(accText(c.out_accessories)):''}</div>
+    ${c.out_notes?`<div class="sub">📝 ${esc(c.out_notes)}</div>`:''}
+    ${c.returned_at
+      ? `<div class="sub">📥 ${fmtDT(c.returned_at)} ל${esc(c.return_site||'')}${c.returned_by_name&&c.returned_by_name!==c.worker_name?' (סומן ע״י '+esc(c.returned_by_name)+')':''}
+         ${c.return_condition==='issue'?' · <span class="late">תקלה</span>':' · תקין'}</div>
+         ${miss.length?`<div class="sub late">חסר: ${esc(miss.join(', '))}</div>`:''}
+         ${c.return_notes?`<div class="sub">📝 ${esc(c.return_notes)}</div>`:''}`
+      : `<div class="sub" style="color:var(--out)">עדיין בחוץ${c.expected_return?' · החזרה צפויה '+fmtD(c.expected_return):''}</div>`}
+  </div>`;
+}
+function histFault(f){
+  return `<div class="hist issue">⚠️ <b>תקלה</b> — ${esc(f.description)}
+    <div class="sub">${fmtDT(f.created_at)} · ${esc(f.worker_name||'')}</div>
+    ${f.status==='resolved'?`<div class="sub" style="color:var(--ok)">✔ נסגרה ${fmtDT(f.resolved_at)} ע״י ${esc(f.resolved_by_name||'')}${f.resolved_note?' — '+esc(f.resolved_note):''}</div>`:'<div class="sub late">פתוחה</div>'}
+  </div>`;
+}
+function openSetStatus(id){
+  const d = S.devices.find(x=>x.id===id);
+  openModal(`<h3>סטטוס ומיקום — ${esc(d.label)}</h3>
+    <label>סטטוס</label><select id="ssSt">${['available','faulty','maintenance','retired'].map(k=>`<option value="${k}" ${d.status===k?'selected':''}>${STATUS[k]}</option>`).join('')}</select>
+    <label>מיקום</label><select id="ssSite">${S.sites.map(s=>`<option value="${s.id}" ${s.id===d.current_site_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
+    ${d.open_faults?`<div class="warn">למכשיר ${d.open_faults} תקלות פתוחות. סימון "זמין" לא סוגר אותן — אפשר לסגור בלשונית תקלות.</div>`:''}
+    <div class="btns"><button class="btn big" onclick="submitStatus(${d.id}, this)">שמירה</button></div>`);
+}
+async function submitStatus(id, btn){
+  await run(btn, async()=>{ await rpc('lu_admin_set_status',{p_device_id:id, p_status:$('ssSt').value, p_site_id:Number($('ssSite').value)});
+    closeModal(); toast('עודכן'); await load(); });
+}
+
+// ===================== ניהול =====================
+let ADMIN_SUB = 'overview';
+let WORKERS = null;
+function viewAdmin(){
+  const subs = [{k:'overview',n:'סקירה'},{k:'devices',n:'מכשירים'},{k:'workers',n:'עובדים'},{k:'log',n:'יומן'}];
+  let h = `<div class="chips">` + subs.map(s=>`<button class="chip ${ADMIN_SUB===s.k?'on':''}" onclick="ADMIN_SUB='${s.k}';render()">${s.n}</button>`).join('') + `</div>`;
+  if(ADMIN_SUB==='overview'){
+    const late = S.devices.filter(d=>isLate(d.open));
+    const out = S.devices.filter(d=>d.open && !isLate(d.open));
+    h += `<h2 class="late">באיחור (${late.length})</h2>` + (late.length?late.map(deviceCard).join(''):`<div class="card empty">אין איחורים</div>`);
+    h += `<h2>בחוץ כרגע (${out.length})</h2>` + (out.length?out.map(deviceCard).join(''):`<div class="card empty">כל המכשירים במחסנים</div>`);
+  }
+  if(ADMIN_SUB==='devices'){
+    h += `<button class="btn big" onclick="openEditDevice()">＋ הוספת מכשיר</button>`;
+    h += `<div class="tblwrap"><table><tr><th>מכשיר</th><th>דגם</th><th>מס״ד</th><th>בית</th><th>סטטוס</th><th></th></tr>` +
+      S.devices.map(d=>`<tr><td><b>${esc(d.label)}</b></td><td>${esc(d.model||'')}</td><td>${esc(d.serial||'')}</td><td>${esc(siteName(d.home_site_id))}</td><td>${badge(d.status)}</td>
+        <td><button class="btn ghost sm" onclick="openEditDevice(${d.id})">עריכה</button></td></tr>`).join('') + `</table></div>`;
+  }
+  if(ADMIN_SUB==='workers'){
+    h += `<button class="btn big" onclick="openEditWorker()">＋ הוספת עובד</button><div id="wkList" class="card empty">טוען...</div>`;
+    setTimeout(loadWorkers,0);
+  }
+  if(ADMIN_SUB==='log'){
+    const t = todayIL();
+    h += `<div class="card"><div class="row" style="gap:8px;align-items:flex-end">
+      <div style="flex:1"><label>מתאריך</label><input type="date" id="lgFrom" value="${addDays(t,-30)}"></div>
+      <div style="flex:1"><label>עד</label><input type="date" id="lgTo" value="${t}"></div>
+      <button class="btn" onclick="loadLog(this)">הצג</button></div></div>
+      <div id="lgOut"></div>`;
+    setTimeout(()=>loadLog(),0);
+  }
+  return h;
+}
+
+// ---------- עריכת מכשיר ----------
+function openEditDevice(id){
+  const d = id ? S.devices.find(x=>x.id===id) : {home_site_id:S.sites[0]?.id};
+  openModal(`<h3>${id?'עריכת':'הוספת'} מכשיר</h3>
+    <label>שם / מספר *</label><input id="edLabel" value="${esc(d.label||'')}" placeholder="LU-07">
+    <label>דגם</label><input id="edModel" value="${esc(d.model||'')}" placeholder="LU800 / LU300S / Solo">
+    <label>מספר סידורי</label><input id="edSerial" value="${esc(d.serial||'')}">
+    <label>SIM / מודמים</label><input id="edSim" value="${esc(d.sim_info||'')}" placeholder="למשל: 4 מודמים — פלאפון, סלקום, פרטנר, הוט">
+    <label>מחסן בית</label><select id="edHome">${S.sites.map(s=>`<option value="${s.id}" ${s.id===d.home_site_id?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
+    <label>הערות</label><textarea id="edNotes">${esc(d.notes||'')}</textarea>
+    <div class="btns"><button class="btn big" onclick="submitDevice(${id||'null'}, this)">שמירה</button></div>`);
+}
+async function submitDevice(id, btn){
+  const p = {label:$('edLabel').value, model:$('edModel').value, serial:$('edSerial').value, sim_info:$('edSim').value,
+             home_site_id:Number($('edHome').value), notes:$('edNotes').value};
+  if(id) p.id = id;
+  await run(btn, async()=>{ await rpc('lu_admin_save_device',{p}); closeModal(); toast('נשמר'); await load(); });
+}
+
+// ---------- עובדים ----------
+async function loadWorkers(){
+  try{
+    WORKERS = await rpc('lu_admin_workers');
+    const el = $('wkList'); if(!el) return;
+    el.classList.remove('empty'); el.style.padding='0';
+    el.innerHTML = `<div class="tblwrap"><table><tr><th>שם</th><th>תפקיד</th><th>טלפון</th><th>קוד</th><th></th></tr>` +
+      WORKERS.map(w=>`<tr style="${w.active?'':'opacity:.45'}"><td><b>${esc(w.name)}</b>${w.is_manager?' 🔑':''}${w.active?'':' (לא פעיל)'}</td>
+        <td>${esc(w.role||'')}</td><td>${esc(w.phone||'')}</td><td style="font-family:monospace">${esc(w.code)}</td>
+        <td><button class="btn ghost sm" onclick="openEditWorker(${w.id})">עריכה</button></td></tr>`).join('') + `</table></div>`;
+  }catch(e){ const el=$('wkList'); if(el) el.textContent=e.message; }
+}
+function openEditWorker(id){
+  const w = id ? WORKERS.find(x=>x.id===id) : {active:true, role:'צלם'};
+  openModal(`<h3>${id?'עריכת':'הוספת'} עובד</h3>
+    <label>שם *</label><input id="ewName" value="${esc(w.name||'')}">
+    <label>תפקיד</label><select id="ewRole">${['צלם','מקליט','מפיק','מבצעים','מנהל'].map(r=>`<option ${r===w.role?'selected':''}>${r}</option>`).join('')}</select>
+    <label>טלפון</label><input id="ewPhone" type="tel" value="${esc(w.phone||'')}">
+    <label>קוד כניסה ${id?'':'(ריק = ייווצר קוד אקראי בן 6 ספרות)'}</label><input id="ewCode" inputmode="numeric" value="${esc(w.code||'')}">
+    <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="ewMgr" style="width:auto" ${w.is_manager?'checked':''}> הרשאת מנהל</label>
+    <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="ewAct" style="width:auto" ${w.active?'checked':''}> פעיל</label>
+    <div class="btns"><button class="btn big" onclick="submitWorker(${id||'null'}, this)">שמירה</button></div>`);
+}
+async function submitWorker(id, btn){
+  const p = {name:$('ewName').value, role:$('ewRole').value, phone:$('ewPhone').value, code:$('ewCode').value,
+             is_manager:$('ewMgr').checked, active:$('ewAct').checked};
+  if(id) p.id = id;
+  await run(btn, async()=>{
+    const w = await rpc('lu_admin_save_worker',{p});
+    closeModal();
+    if(!id) alert(`${w.name} נוסף/ה.\nקוד כניסה: ${w.code}`); else toast('נשמר');
+    await loadWorkers();
+  });
+}
+
+// ---------- יומן ----------
+let LOG_ROWS = [];
+async function loadLog(btn){
+  await run(btn, async()=>{
+    LOG_ROWS = await rpc('lu_admin_log',{p_from:$('lgFrom').value, p_to:$('lgTo').value});
+    const el = $('lgOut'); if(!el) return;
+    if(!LOG_ROWS.length){ el.innerHTML = `<div class="card empty">אין תנועות בטווח</div>`; return; }
+    el.innerHTML = `<div class="btns" style="margin:0 0 8px"><button class="btn ghost sm" onclick="exportCSV()">הורדה ל-Excel (CSV)</button></div>
+      <div class="tblwrap"><table><tr><th>מכשיר</th><th>עובד</th><th>משימה</th><th>יצא</th><th>חזר</th><th>מצב</th></tr>` +
+      LOG_ROWS.map(r=>`<tr><td><b>${esc(r.device_label)}</b></td><td>${esc(r.worker_name)}</td><td>${esc(r.assignment||'')}</td>
+        <td>${fmtDT(r.out_at)}<div class="sub">${esc(r.out_site||'')}</div></td>
+        <td>${r.returned_at?fmtDT(r.returned_at)+`<div class="sub">${esc(r.return_site||'')}</div>`:`<span style="color:var(--out)">בחוץ</span>`}</td>
+        <td>${r.return_condition==='issue'?'<span class="late">תקלה</span>':r.return_condition==='ok'?'תקין':''}</td></tr>`).join('') + `</table></div>`;
+  });
+}
+function exportCSV(){
+  const head = ['מכשיר','עובד','משימה','תאריך צילום','יצא','מאתר','החזרה צפויה','חזר','לאתר','מצב'];
+  const q = v => `"${String(v??'').replace(/"/g,'""')}"`;
+  const lines = [head.map(q).join(',')].concat(LOG_ROWS.map(r=>[r.device_label,r.worker_name,r.assignment,fmtD(r.shoot_date),fmtDT(r.out_at),r.out_site,
+    fmtD(r.expected_return),fmtDT(r.returned_at),r.return_site,r.return_condition==='issue'?'תקלה':r.return_condition==='ok'?'תקין':'בחוץ'].map(q).join(',')));
+  const blob = new Blob(['﻿'+lines.join('\r\n')], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `liveu-log-${$('lgFrom').value}-${$('lgTo').value}.csv`; a.click();
+}
+
+// ===================== התחלה =====================
+if(CODE) load(); else $('codeIn').focus();
+</script>
+</body>
+</html>
