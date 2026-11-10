@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>מכשירי LiveU — כאן 11</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <style>
   :root{
     --bg:#f3f4f6; --card:#fff; --ink:#111827; --mute:#6b7280; --line:#e5e7eb;
@@ -112,7 +113,7 @@
 
 <script>
 // ===================== הגדרות =====================
-const VERSION = '2026-11-10-01';
+const VERSION = '2026-11-10-02';
 const SUPABASE_URL = 'https://wvfttzfitqclrxsbbbsl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Cju_iMjpxbRI-JbEKBa5iw_AInI5ehe';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -202,6 +203,7 @@ async function load(){
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
     $('who').textContent = S.me.name + (S.me.is_manager ? ' · מנהל' : '');
     render();
+    handleDeepLink();
   }catch(e){
     if(/קוד שגוי/.test(e.message)) logout();
     else alert('שגיאה בטעינה: ' + e.message);
@@ -430,6 +432,7 @@ async function openDevice(id){
   h += `<button class="btn ghost" onclick="closeModal();openFault(${d.id})">דיווח תקלה</button>`;
   if(mgr){
     h += `<button class="btn ghost" onclick="closeModal();openEditDevice(${d.id})">עריכה</button>`;
+    h += `<button class="btn ghost" onclick="printQR([${d.id}])">מדבקת QR</button>`;
     if(d.status!=='out') h += `<button class="btn ghost" onclick="openSetStatus(${d.id})">שינוי סטטוס/מיקום</button>`;
   }
   h += `</div>`;
@@ -495,6 +498,7 @@ function viewAdmin(){
   }
   if(ADMIN_SUB==='devices'){
     h += `<button class="btn big" onclick="openEditDevice()">＋ הוספת מכשיר</button>`;
+    h += `<button class="btn big ghost" onclick="printQR(S.devices.filter(d=>d.status!=='retired').map(d=>d.id))">🖨 הדפסת מדבקות QR לכל המכשירים</button>`;
     h += `<div class="tblwrap"><table><tr><th>מכשיר</th><th>דגם</th><th>מס״ד</th><th>בית</th><th>סטטוס</th><th></th></tr>` +
       S.devices.map(d=>`<tr><td><b>${esc(d.label)}</b></td><td>${esc(d.model||'')}</td><td>${esc(d.serial||'')}</td><td>${esc(siteName(d.home_site_id))}</td><td>${badge(d.status)}</td>
         <td><button class="btn ghost sm" onclick="openEditDevice(${d.id})">עריכה</button></td></tr>`).join('') + `</table></div>`;
@@ -594,6 +598,44 @@ function exportCSV(){
   const blob = new Blob(['﻿'+lines.join('\r\n')], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = `liveu-log-${$('lgFrom').value}-${$('lgTo').value}.csv`; a.click();
+}
+
+// ===================== QR =====================
+// כתובת שמודפסת על המדבקה: ?d=<מזהה מכשיר>
+function deviceUrl(id){ return location.origin + location.pathname + '?d=' + id; }
+// סריקת מדבקה: פותח את כרטיס המכשיר (אחרי כניסה, אם צריך)
+function handleDeepLink(){
+  const p = new URLSearchParams(location.search).get('d');
+  if(!p) return;
+  history.replaceState(null, '', location.pathname);   // שרענון לא יפתח שוב
+  const d = S.devices.find(x => x.id === Number(p));
+  if(!d){ toast('המכשיר לא נמצא'); return; }
+  TAB = 'devices'; render();
+  openDevice(d.id);
+}
+function qrSvg(text){
+  const q = qrcode(0, 'M'); q.addData(text); q.make();
+  return q.createSvgTag({cellSize:5, margin:2});
+}
+function printQR(ids){
+  const list = S.devices.filter(d => ids.includes(d.id));
+  if(!list.length){ alert('אין מכשירים להדפסה'); return; }
+  const stickers = list.map(d => `<div class="st">${qrSvg(deviceUrl(d.id))}
+      <div class="lb">${esc(d.label)}</div>
+      <div class="md">${esc(d.model||'')}${d.home_site_id?' · '+esc(siteName(d.home_site_id)):''}</div>
+      <div class="hn">סרקו ללקיחה / החזרה</div></div>`).join('');
+  const w = window.open('', '_blank');
+  if(!w){ alert('הדפדפן חסם חלון קופץ — יש לאשר חלונות קופצים לאתר'); return; }
+  w.document.write(`<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8"><title>מדבקות QR — LiveU</title>
+    <style>body{font-family:Arial,sans-serif;margin:10mm}
+    .grid{display:grid;grid-template-columns:repeat(3,60mm);gap:6mm}
+    .st{border:1px dashed #999;border-radius:4mm;padding:4mm;text-align:center;break-inside:avoid}
+    .st svg{width:42mm;height:42mm}
+    .lb{font-size:16pt;font-weight:bold;margin-top:2mm}.md{font-size:9pt;color:#555}.hn{font-size:9pt;margin-top:1mm}
+    .bar{margin-bottom:6mm}@media print{.bar{display:none}}</style></head><body>
+    <div class="bar"><button onclick="print()">🖨 הדפסה</button> ${list.length} מדבקות · כאן 11 — מכשירי LiveU</div>
+    <div class="grid">${stickers}</div></body></html>`);
+  w.document.close();
 }
 
 // ===================== התחלה =====================
