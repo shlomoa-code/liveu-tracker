@@ -112,7 +112,7 @@
 
 <script>
 // ===================== הגדרות =====================
-const VERSION = '2026-11-09-01';
+const VERSION = '2026-11-10-01';
 const SUPABASE_URL = 'https://wvfttzfitqclrxsbbbsl.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Cju_iMjpxbRI-JbEKBa5iw_AInI5ehe';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -563,6 +563,8 @@ async function submitWorker(id, btn){
   if(id) p.id = id;
   await run(btn, async()=>{
     const w = await rpc('lu_admin_save_worker',{p});
+    // אם המנהל שינה את הקוד של עצמו — ממשיכים עם הקוד החדש
+    if(id === S.me.id && w.code !== CODE){ CODE = w.code; localStorage.setItem('lu_code', CODE); }
     closeModal();
     if(!id) alert(`${w.name} נוסף/ה.\nקוד כניסה: ${w.code}`); else toast('נשמר');
     await loadWorkers();
